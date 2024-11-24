@@ -5,7 +5,10 @@ const UserSchema = mongoose.Schema({
     password: String,
     username: String,
     fullname: String,
-    createdAt: Date,
+    createdAt: {
+        type: Date,
+        default: Date.now
+    },
     updatedAt: Date,
     organization: String,
     userType: {
@@ -16,7 +19,8 @@ const UserSchema = mongoose.Schema({
     deletedAt: {
         type: Date,
         require: false
-    }
+    },
+    isVerified: Boolean
 });
 
 module.exports = new mongoose.model("User", UserSchema);
