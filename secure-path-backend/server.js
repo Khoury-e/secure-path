@@ -32,10 +32,7 @@ app.use((req, res, next) => {
 
 // connect database
 const dbURL = `mongodb://${process.env.MONGO_USERNAME}:${process.env.MONGO_PASS}@${process.env.MONGO_HOST}:${process.env.MONGO_PORT}/${process.env.MONGO_DB}`
-mongoose.connect(dbURL, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-})
+mongoose.connect(dbURL)
 .then(() => console.log("Database connected"))
 .catch(err => console.error("Database connection error:", err));
 
