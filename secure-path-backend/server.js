@@ -1,7 +1,8 @@
 const express = require("express");
 const cors = require("cors");
-const app = express();
+const cookieParser = require("cookie-parser");
 const mongoose = require("mongoose");
+const app = express();
 // to use .env files
 require("dotenv").config()
 
@@ -13,6 +14,7 @@ const corsSettings = {
     exposedHeaders: ['set-cookie']
 }
 
+app.use(cookieParser());
 app.use(cors(corsSettings));
 app.use(express.json());
 app.use(express.urlencoded({extended: true}));
@@ -20,10 +22,11 @@ app.use(express.urlencoded({extended: true}));
 
 // define routes
 const authRoutes = require("./routes/Auth/auth");
+const userRoutes = require("./routes/User/user");
 
 // use routes
 app.use("/auth", authRoutes);
-
+app.use("/user", userRoutes);
 
 // invalid routes
 app.use((req, res, next) => {

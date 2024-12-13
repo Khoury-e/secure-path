@@ -1,19 +1,16 @@
 const mongoose = require("mongoose")
 
 const UserSubmissionSchema = mongoose.Schema({
-    module: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Module"
-    },
-    exercise: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Excercise"
-    },
-    user: {
+    userId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User"
     },
-    submissionDate: Date,
+    title: String,
+    difficulty: String,
+    submissionDate: {
+        type: Date,
+        default: Date.now
+    },
     submissionSuccess: Boolean
 });
 

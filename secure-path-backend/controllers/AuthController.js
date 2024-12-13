@@ -19,14 +19,24 @@ exports.login = async (req, res) => {
       user.password
     );
     if (!isValidPassword) {
-      return req.status(401).json({ message: "Invalid Username or password" });
+      return res.status(401).json({ message: "Invalid Username or password" });
     }
 
     const token = jwtHelper.sign(email);
-    res.cookie("token", token, { httpOnly: true, maxAge: 900000 });
+    res.cookie("token", token, { httpOnly: true, maxAge: 60*60*1000 , secure: false, });
+    
+    const userData = {
+      id: user._id,
+      email: user.email,
+      fullname: user.fullname,
+      username: user.username,
+      isVerified: user.isVerified
+    };
+
+    res.cookie("user", userData, { httpOnly: true, maxAge: 900000, secure: false, });
     res
       .status(200)
-      .json({ message: "Authenticated", user: user, token: token });
+      .json({ message: "Authenticated", user: userData, token: token, userCookie: userData });
   } catch (error) {
     res.status(500).json({ message: "Unable to authenticate" });
     console.log(error);
@@ -91,6 +101,8 @@ exports.signup = async (req, res) => {
     res.status(400).json({ message: "Could Not Create Token Record" });
   }
 
+  res.cookie("token", token, { httpOnly: true, maxAge: 900000, secure: false, });
+
   let emailOptions = {
     from: "khouryelias04@gmail.com",
     to: email,
@@ -127,16 +139,29 @@ exports.verifyEmail = async (req, res) => {
 
   const user = await Token.findOne({ userId: userId });
 
-  if (user) {
-    const userToken = user.token;
-    if (userToken === token) {
-      User.findOneAndUpdate(
-        { _id: userId },
-        { $set: { isVerified: true } }
-      );
-    }
-    return res.status(400).json({ message: "Failed To Verify Account" });
+  if (!user) {
+    return res.status(400).json({ message: "Unable to find email" });
   }
 
-  return res.status(400).json({ message: "Unable to find email" });
+  const userToken = user.token;
+
+  if (userToken === token) {
+    await User.findOneAndUpdate(
+      { _id: userId },
+      { $set: { isVerified: true } }
+    );
+    return res.status(200).json({ message: "Account successfully verified" });
+  }
+
+  return res.status(400).json({ message: "Failed To Verify Account" });
 };
+
+
+exports.isLoggedIn = (req,res) => {
+  let token = req.cookies["token"];
+  if (!token) {
+    return res.status(401).json({message: "Session Expired! Please login again", redirect: "/login"});
+  }
+
+  return res.status(200).json({message: "Authorized"});
+}
