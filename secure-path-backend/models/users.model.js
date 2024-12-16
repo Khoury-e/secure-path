@@ -10,12 +10,7 @@ const UserSchema = mongoose.Schema({
         default: Date.now
     },
     updatedAt: Date,
-    organization: String,
-    userType: {
-        type: String,
-        enum: ["organizationAdmin", "regular_user"]
-    },
-    lastLogin: Date,
+    role: String,
     deletedAt: {
         type: Date,
         require: false
