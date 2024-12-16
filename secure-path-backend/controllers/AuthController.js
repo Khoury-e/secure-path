@@ -8,7 +8,7 @@ exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const user = await User.findOne({ email: email });
+    const user = await User.findOne({ email: email, deletedAt: null });
 
     if (!user) {
       return res.status(401).json({ message: "Invalid Username or password" });
@@ -19,14 +19,26 @@ exports.login = async (req, res) => {
       user.password
     );
     if (!isValidPassword) {
-      return req.status(401).json({ message: "Invalid Username or password" });
+      return res.status(401).json({ message: "Invalid Username or password" });
     }
 
     const token = jwtHelper.sign(email);
-    res.cookie("token", token, { httpOnly: true, maxAge: 900000 });
+    res.cookie("token", token, { httpOnly: true, maxAge: 60*60*1000 , secure: false, });
+    
+    const userData = {
+      id: user._id,
+      email: user.email,
+      fullname: user.fullname,
+      username: user.username,
+      isVerified: user.isVerified,
+      organization: user.organization,
+      userType: user.userType
+    };
+
+    res.cookie("user", userData, { httpOnly: true, maxAge: 900000, secure: false, });
     res
       .status(200)
-      .json({ message: "Authenticated", user: user, token: token });
+      .json({ message: "Authenticated", user: userData, token: token, userCookie: userData });
   } catch (error) {
     res.status(500).json({ message: "Unable to authenticate" });
     console.log(error);
@@ -49,9 +61,7 @@ exports.signup = async (req, res) => {
 
   // setting up few default values when signing up
 
-  const organization = "public";
-  const userType = "regular_user";
-  const lastLogin = null;
+  const role = "regular_user";
   const updatedAt = null;
   const deletedAt = null;
 
@@ -65,9 +75,7 @@ exports.signup = async (req, res) => {
     password: password,
     username: username,
     fullname: fullname,
-    organization: organization,
-    userType: userType,
-    lastLogin: lastLogin,
+    role: role,
     updatedAt: updatedAt,
     deletedAt: deletedAt,
     isVerified: false
@@ -90,6 +98,8 @@ exports.signup = async (req, res) => {
   if (!tokenRecord) {
     res.status(400).json({ message: "Could Not Create Token Record" });
   }
+
+  res.cookie("token", token, { httpOnly: true, maxAge: 900000, secure: false, });
 
   let emailOptions = {
     from: "khouryelias04@gmail.com",
@@ -127,16 +137,66 @@ exports.verifyEmail = async (req, res) => {
 
   const user = await Token.findOne({ userId: userId });
 
-  if (user) {
-    const userToken = user.token;
-    if (userToken === token) {
-      User.findOneAndUpdate(
-        { _id: userId },
-        { $set: { isVerified: true } }
-      );
-    }
-    return res.status(400).json({ message: "Failed To Verify Account" });
+  if (!user) {
+    return res.status(400).json({ message: "Unable to find email" });
   }
 
-  return res.status(400).json({ message: "Unable to find email" });
+  const userToken = user.token;
+
+  if (userToken === token) {
+    await User.findOneAndUpdate(
+      { _id: userId },
+      { $set: { isVerified: true } }
+    );
+    return res.status(200).json({ message: "Account successfully verified" });
+  }
+
+  return res.status(400).json({ message: "Failed To Verify Account" });
 };
+
+exports.logout = (req,res) => {
+  let userId = req.cookies["user"].id;
+  let token = req.cookies["token"];
+
+  if (!userId) {
+    return res.status(401).json({message: "Unauthorized!"});
+  }
+
+  if (!token) {
+    return res.status(400).json({message: "Invalid token!"});
+  }
+
+  res.cookie("token", "", { httpOnly: true });
+  res.cookie("user", "", { httpOnly: true, secure: false});
+
+  return res.status(200).json({message: "Logged out!"});a
+}
+
+exports.isLoggedIn = (req,res) => {
+  let token = req.cookies["token"];
+  if (!token) {
+    return res.status(401).json({message: "Session Expired! Please login again"});
+  }
+
+  return res.status(200).json({message: "Authorized"});
+}
+
+exports.isVerifiedAccount = async (req,res) => {
+  let userId = req.cookies["user"].id;
+
+  if (!userId) {
+    return res.status(401).json({message: "Umauthorized"});
+  }
+
+  const user = await User.findOne({_id: userId});
+
+  if (!user) {
+    return res.status(404).json({message: "User not found"});
+  }
+
+  if (user.isVerified) {
+    return res.status(200).json({verified: true});
+  }
+
+  return res.status(400).json({isVerified: false});
+}
